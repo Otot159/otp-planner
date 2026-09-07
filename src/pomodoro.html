@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%; overflow: hidden; background: transparent;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; user-select: none;
+  }
+
+  .w {
+    position: absolute; inset: 0;
+    background: rgba(15,15,19,0.88);
+    backdrop-filter: blur(50px) saturate(1.8);
+    -webkit-backdrop-filter: blur(50px) saturate(1.8);
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 10px;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.5), inset 0 0.5px 0 rgba(255,255,255,0.05);
+    cursor: grab;
+  }
+  .w:active { cursor: grabbing; }
+
+  /* ── Close dot ── */
+  .close {
+    position: absolute; top: 5px; left: 6px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,0.1); border: none; cursor: pointer;
+    transition: background 0.15s; z-index: 2;
+  }
+  .close:hover { background: #ff5f56; }
+
+  /* ── Mini ring ── */
+  .ring { width: 30px; height: 30px; flex-shrink: 0; position: relative; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 2.5; }
+  .ring-fg { fill: none; stroke-width: 2.5; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.3s; }
+  .ring-fg.work { stroke: #ef4444; }
+  .ring-fg.brk { stroke: #34d399; }
+
+  /* ── Time ── */
+  .center { flex: 1; min-width: 0; }
+  .time {
+    font-size: 22px; font-weight: 700; color: #f0f0f3;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.8px; line-height: 1;
+  }
+  .meta {
+    display: flex; align-items: center; gap: 6px; margin-top: 2px;
+  }
+  .mode {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .mode.work { color: rgba(239,68,68,0.6); }
+  .mode.brk { color: rgba(52,211,153,0.6); }
+  .dots { display: flex; gap: 3px; }
+  .dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .dot.done { background: rgba(239,68,68,0.4); }
+  .dot.on { background: #ef4444; }
+  .dot.on.brk { background: #34d399; }
+
+  /* ── Controls ── */
+  .ctrls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+  .cb {
+    background: none; border: none; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; transition: background 0.12s; cursor: pointer;
+  }
+  .cb:hover { background: rgba(255,255,255,0.08); }
+  .cb svg { width: 12px; height: 12px; }
+  .play {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .play.work { background: rgba(239,68,68,0.14); }
+  .play.work:hover { background: rgba(239,68,68,0.24); }
+  .play.brk { background: rgba(52,211,153,0.14); }
+  .play.brk:hover { background: rgba(52,211,153,0.24); }
+  .play svg { width: 11px; height: 11px; }
+</style>
+</head>
+<body>
+
+<div class="w" id="w">
+  <button class="close" id="x"></button>
+
+  <div class="ring">
+    <svg viewBox="0 0 36 36">
+      <circle class="ring-bg" cx="18" cy="18" r="15"/>
+      <circle class="ring-fg work" id="rg" cx="18" cy="18" r="15"
+        stroke-dasharray="94.25" stroke-dashoffset="0"/>
+    </svg>
+  </div>
+
+  <div class="center">
+    <div class="time" id="t">25:00</div>
+    <div class="meta">
+      <span class="mode work" id="ml">Focus</span>
+      <div class="dots" id="ds"></div>
+    </div>
+  </div>
+
+  <div class="ctrls">
+    <button class="cb" id="rb" title="Reset">
+      <svg fill="none" viewBox="0 0 16 16"><path d="M2 2v5h5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 10A6 6 0 1 0 4 4L2 7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="play work" id="pb">
+      <svg id="pi" viewBox="0 0 16 16"><polygon points="6,3 13,8 6,13" fill="#f87171"/></svg>
+    </button>
+    <button class="cb" id="sb" title="Skip">
+      <svg fill="none" viewBox="0 0 16 16"><path d="M3 2l7 6-7 6V2z" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="13" y1="3" x2="13" y2="13" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const W=25*60,B=5*60,LB=15*60,N=4,C=2*Math.PI*15;
+let md='work',s=W,go=false,sn=1,iv=null;
+
+const $=id=>document.getElementById(id);
+const rg=$('rg'),te=$('t'),ml=$('ml'),pi=$('pi'),pb=$('pb'),ds=$('ds');
+
+// drag
+let dr=false,lx=0,ly=0;
+$('w').addEventListener('mousedown',e=>{
+  if(e.target.closest('button'))return;
+  dr=true;lx=e.screenX;ly=e.screenY;
+});
+document.addEventListener('mousemove',e=>{
+  if(!dr)return;
+  window.pomo.moveWindow(e.screenX-lx,e.screenY-ly);
+  lx=e.screenX;ly=e.screenY;
+});
+document.addEventListener('mouseup',()=>{dr=false;});
+
+$('x').addEventListener('click',()=>window.pomo.close());
+
+pb.addEventListener('click',()=>{
+  if(go){clearInterval(iv);iv=null;go=false;}
+  else{go=true;iv=setInterval(tk,1000);}
+  r();
+});
+$('rb').addEventListener('click',()=>{
+  clearInterval(iv);iv=null;go=false;
+  s=md==='work'?W:bl();r();
+});
+$('sb').addEventListener('click',()=>{
+  clearInterval(iv);iv=null;go=false;fl();r();
+});
+
+function bl(){return sn%N===0?LB:B;}
+function tk(){s--;if(s<=0){clearInterval(iv);iv=null;go=false;chime();fl();}r();}
+function fl(){
+  if(md==='work'){md='break';s=bl();}
+  else{md='work';s=W;sn++;}
+}
+
+function r(){
+  const m=Math.floor(s/60),sc=s%60;
+  te.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+  const bk=md==='break',tot=md==='work'?W:bl(),pct=s/tot;
+  rg.setAttribute('stroke-dashoffset',C*(1-pct));
+  rg.setAttribute('class','ring-fg '+(bk?'brk':'work'));
+  ml.textContent=bk?'Break':'Focus';
+  ml.className='mode '+(bk?'brk':'work');
+  pb.className='play '+(bk?'brk':'work');
+  const col=bk?'#34d399':'#f87171';
+  pi.innerHTML=go
+    ?`<rect x="4" y="3" width="2.5" height="10" rx="0.5" fill="${col}"/><rect x="9.5" y="3" width="2.5" height="10" rx="0.5" fill="${col}"/>`
+    :`<polygon points="6,3 13,8 6,13" fill="${col}"/>`;
+  let h='';
+  for(let i=1;i<=N;i++){
+    let c='dot';
+    if(i<sn||(i===sn&&bk))c+=' done';
+    else if(i===sn)c+=' on'+(bk?' brk':'');
+    h+=`<div class="${c}"></div>`;
+  }
+  ds.innerHTML=h;
+}
+
+function chime(){
+  try{
+    const x=new AudioContext();
+    [1047,1319,1568].forEach((f,i)=>{
+      const o=x.createOscillator(),g=x.createGain();
+      o.type='sine';o.frequency.value=f;
+      const t=x.currentTime+i*0.18;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.2,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+      o.connect(g);g.connect(x.destination);o.start(t);o.stop(t+0.5);
+    });
+  }catch(e){}
+}
+
+r();
+</script>
+</body>
+</html>

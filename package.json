@@ -1,0 +1,37 @@
+{
+  "name": "otp-planner",
+  "version": "1.0.0",
+  "description": "OtP — Othmane's Planner. Manage tasks, meetings, and tickets across projects.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build-win": "electron-builder --win",
+    "build-linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.otp.planner",
+    "productName": "OtP",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.109.0"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^24.0.0"
+  }
+}
