@@ -53,6 +53,7 @@ ipcMain.handle('delete-item', (_, itemId) => db.deleteItem(itemId));
 ipcMain.handle('get-clients', (_, includeArchived) => db.getClients(includeArchived));
 ipcMain.handle('add-client', (_, name, color) => db.addClient(name, color));
 ipcMain.handle('update-client', (_, clientId, updates) => db.updateClient(clientId, updates));
+ipcMain.handle('set-client-status', (_, clientId, date, text) => db.setClientStatus(clientId, date, text));
 ipcMain.handle('delete-client', (_, clientId) => db.deleteClient(clientId));
 ipcMain.handle('reorder-clients', (_, orderedIds) => db.reorderClients(orderedIds));
 ipcMain.handle('get-available-colors', () => db.getAvailableColors());

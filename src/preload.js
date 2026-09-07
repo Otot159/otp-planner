@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   getClients: (includeArchived) => ipcRenderer.invoke('get-clients', includeArchived),
   addClient: (name, color) => ipcRenderer.invoke('add-client', name, color),
   updateClient: (clientId, updates) => ipcRenderer.invoke('update-client', clientId, updates),
+  setClientStatus: (clientId, date, text) => ipcRenderer.invoke('set-client-status', clientId, date, text),
   deleteClient: (clientId) => ipcRenderer.invoke('delete-client', clientId),
   reorderClients: (orderedIds) => ipcRenderer.invoke('reorder-clients', orderedIds),
   getAvailableColors: () => ipcRenderer.invoke('get-available-colors'),

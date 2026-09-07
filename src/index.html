@@ -488,6 +488,18 @@
   .subtask { padding-left: 26px; }
   .empty { color: var(--text4); font-size: 12px; padding: 4px 0; letter-spacing: 0.1px; }
   .separator { height: 1px; background: var(--border); margin: 4px 18px; }
+  /* ─── PROJECT STATUS NOTE ─── */
+  .card-status-section { padding-top: 10px; padding-bottom: 4px; }
+  .card-status {
+    font-size: 12.5px; line-height: 1.5; color: var(--text2);
+    white-space: pre-wrap; overflow-wrap: anywhere; outline: none; cursor: text;
+    border-radius: var(--radius-sm); padding: 6px 8px; margin: 2px -8px 0;
+    min-height: 1.4em; transition: background 0.15s var(--ease-out);
+  }
+  .card-status:hover { background: var(--surface2); }
+  .card-status:focus { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border2); }
+  .card-status.empty { color: var(--text4); font-style: italic; }
+  .card-status-date { font-size: 10px; color: var(--text4); font-weight: 500; letter-spacing: 0.3px; text-transform: none; }
   .add-input-row { display: flex; gap: 6px; padding: 4px 6px; align-items: center; }
   .add-input {
     flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
@@ -1072,6 +1084,35 @@ function stripHtml(html) {
   const tmp = document.createElement('div'); tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || '';
 }
+function escStatusHtml(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ═══ PROJECT STATUS NOTE (overview cards) ═══
+function focusCardStatus(el){
+  if (el.classList.contains('empty')) { el.textContent = ''; el.classList.remove('empty'); }
+}
+async function saveCardStatus(el, clientId, dateKey){
+  const t = el.innerText.trim();
+  if (t === (el.dataset.orig || '')) {
+    if (!t) { el.textContent = el.dataset.ph; el.classList.add('empty'); }
+    return;
+  }
+  await window.api.setClientStatus(clientId, dateKey, t);
+  el.dataset.orig = t;
+  if (!t) { renderPage(); return; }   // cleared → recompute carry-forward from earlier days
+  // stamp/refresh the "updated <date>" label for the day just edited
+  const sec = el.closest('.card-status-section');
+  const hdr = sec && sec.querySelector('.section-header');
+  if (hdr) {
+    let lbl = hdr.querySelector('.card-status-date');
+    if (!lbl) { lbl = document.createElement('span'); lbl.className = 'card-status-date'; hdr.appendChild(lbl); }
+    lbl.textContent = 'updated ' + shortDate(dateKey);
+  }
+  statusMsg('Status saved');
+}
+function shortDate(key){
+  try { return new Date(key + 'T12:00:00').toLocaleDateString(undefined, { day:'numeric', month:'short' }); }
+  catch { return key; }
+}
 
 // ═══ SIDEBAR ═══
 let foldersCache = [];
@@ -1635,6 +1676,15 @@ async function renderOverview(page) {
           </div>
         </div>
       </div>`;
+    // Project status note — dated snapshot: shows the standing status and when it was last set
+    const _st = (client.status || '').trim();
+    const _sd = client.statusDate || '';
+    const _ph = "How do we stand? What are you waiting for — what's next?";
+    html += `<div class="section card-status-section">
+        <div class="section-header"><span class="section-title">Status</span>${_sd ? `<span class="card-status-date">updated ${shortDate(_sd)}</span>` : ''}</div>
+        <div class="card-status${_st ? '' : ' empty'}" contenteditable="true" draggable="false" data-ph="${_ph}" onfocus="focusCardStatus(this)" onblur="saveCardStatus(this,${client.id},'${key}')">${_st ? escStatusHtml(_st) : _ph}</div>
+      </div>
+      <div class="separator"></div>`;
     for (let si=0; si<taskSections.length; si++) {
       if (si>0) html += '<div class="separator"></div>';
       html += renderSection(taskSections[si], key);
@@ -1692,6 +1742,11 @@ async function renderOverview(page) {
 
   page.innerHTML = html;
 
+  // Snapshot each status field's saved value, for change detection on blur
+  document.querySelectorAll('#overviewColumns .card-status').forEach(el => {
+    el.dataset.orig = el.classList.contains('empty') ? '' : el.innerText.trim();
+  });
+
   // Init column drag-and-drop reordering
   initColumnDrag();
 }
@@ -1703,7 +1758,7 @@ function initColumnDrag() {
   cols.forEach(col => {
     col.addEventListener('dragstart', e => {
       // Don't drag if interacting with inputs/buttons inside
-      if (e.target.closest('button, input, .dropdown')) { e.preventDefault(); return; }
+      if (e.target.closest('button, input, .dropdown, .card-status')) { e.preventDefault(); return; }
       colDragId = parseInt(col.dataset.clientId);
       col.classList.add('col-dragging');
       e.dataTransfer.effectAllowed = 'move';

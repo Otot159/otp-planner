@@ -18,6 +18,8 @@ function load() {
     data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
     // Migration: add archived field if missing
     data.clients.forEach(c => { if (c.archived === undefined) c.archived = false; });
+    // Migration: add dated status log if missing (keeps c.status as the undated baseline)
+    data.clients.forEach(c => { if (c.statusLog === undefined) c.statusLog = {}; });
     // Migration: add personalTasks if missing
     if (!data.personalTasks) data.personalTasks = [];
     // Migration: add taskNotes if missing
@@ -114,8 +116,31 @@ function updateClient(clientId, updates) {
     if (updates.color !== undefined) client.color = updates.color;
     if (updates.archived !== undefined) client.archived = updates.archived;
     if (updates.sort_order !== undefined) client.sort_order = updates.sort_order;
+    if (updates.status !== undefined) client.status = updates.status;
     save();
   }
+}
+
+// Resolve the status shown for a given date: the most recent dated entry on or
+// before that date, else the undated baseline (c.status). Returns { text, date }.
+function resolveClientStatus(client, date) {
+  const log = client.statusLog || {};
+  const keys = Object.keys(log).filter(k => k <= date).sort();
+  if (keys.length) { const k = keys[keys.length - 1]; return { text: log[k] || '', date: k }; }
+  if (client.status) return { text: client.status, date: null };
+  return { text: '', date: null };
+}
+
+// Stamp a status to a specific date. Empty text removes that day's entry
+// (so the day falls back to the previous standing status).
+function setClientStatus(clientId, date, text) {
+  const client = data.clients.find(c => c.id === clientId);
+  if (!client) return;
+  if (!client.statusLog) client.statusLog = {};
+  const t = (text || '').trim();
+  if (t) client.statusLog[date] = t;
+  else delete client.statusLog[date];
+  save();
 }
 
 function deleteClient(clientId) {
@@ -208,7 +233,8 @@ function getDayData(date) {
 
   for (const client of clients) {
     const sections = getSections(client.id);
-    const clientData = { id: client.id, name: client.name, color: client.color, sections: [] };
+    const _s = resolveClientStatus(client, date);
+    const clientData = { id: client.id, name: client.name, color: client.color, status: _s.text, statusDate: _s.date, sections: [] };
 
     for (const section of sections) {
       const items = getItems(section.id, date);
@@ -419,6 +445,7 @@ function importAll(imported) {
     data.nextId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
   }
   data.clients.forEach(c => { if (c.archived === undefined) c.archived = false; });
+  data.clients.forEach(c => { if (c.statusLog === undefined) c.statusLog = {}; });
   if (!data.personalTasks) data.personalTasks = [];
   if (!data.taskNotes) data.taskNotes = [];
   if (!data.recurring) data.recurring = [];
@@ -489,7 +516,7 @@ function setSupplementDefaults(items) {
 module.exports = {
   init, getClients, getSections, getDayData, addItem,
   updateItemStatus, updateItemText, updateItemMeeting, deleteItem,
-  addClient, updateClient, deleteClient, reorderClients, getAvailableColors,
+  addClient, updateClient, deleteClient, reorderClients, getAvailableColors, setClientStatus,
   addSection, updateSection, deleteSection,
   getPersonalTasks, addPersonalTask, updatePersonalTask, deletePersonalTask,
   getTaskNotes, getTaskNote, addTaskNote, updateTaskNote, deleteTaskNote,
